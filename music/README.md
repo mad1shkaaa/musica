@@ -41,8 +41,13 @@
 | 16 | `lux-aeterna-lonely-dreams-634727.mp3` | Lonely Dreams | Lux Aeterna |
 | 17 | `mickeyscat-run-phonk-energy-no-copyright-637997.mp3` | Run (Phonk Energy) | Mickeyscat |
 | 18 | `music_for_videos-inspiring-emotional-uplifting-piano-112623.mp3` | Inspiring Emotional Uplifting Piano | Music For Videos |
-| 19 | `pink_sound_copper_nights_jazz_background_music_for_video_stories.mp3` | Copper Nights Jazz | Pink Sound |
+| 19 | `pink_sound-copper-nights-jazz-background-music-for-video-stories-full-version-633222.mp3` | Copper Nights Jazz | Pink Sound |
 | 20 | `alex_makemusic-feels-like-saturday-637034.mp3` | Feels Like Saturday | Alex_MakeMusic |
+| 21 | `purrplecat-serendipity-635081.mp3` | Serendipity | PurrpleCat |
+| 22 | `sonicmystery-reality-634743.mp3` | Reality | SonicMystery |
+| 23 | `strawberry_candy-aggressive-metal-music-metalize-635620.mp3` | Metalize | Strawberry_Candy |
+| 24 | `studiokolomna-no-copyright-music-632665.mp3` | Energetic Music | StudioKolomna |
+| 25 | `the_mountain-christmas-637784.mp3` | Christmas | The_Mountain |
 
-Список задан в `index.html` (`TRACK_MANIFEST`, 20 треков). Чтобы добавить новый трек с другим именем,
+Список задан в `index.html` (`TRACK_MANIFEST`, 25 треков). Чтобы добавить новый трек с другим именем,
 допишите его туда в той же форме: `{"file": "x.mp3", "title": "…", "author": "…", "moods": ["calm"], "bpm": 96}`.
