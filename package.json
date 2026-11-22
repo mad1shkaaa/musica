@@ -1,0 +1,10 @@
+{
+  "name": "dnevnik-moei-zhizni",
+  "private": true,
+  "description": "Дневник моей жизни — статический сайт и серверная озвучка ElevenLabs",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check lib/tts-core.js && node --check api/tts.js"
+  },
+  "engines": { "node": ">=18.17" }
+}
