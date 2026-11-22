@@ -1671,7 +1671,9 @@ const TRACKS = [], TRACK = {};
 const musicURL = f => new URL('music/' + encodeURIComponent(f), document.baseURI).href;
 // где реально лежит трек: сначала music/<файл>, затем <файл> рядом с index.html
 // (так бывает, если файлы загрузили на GitHub с телефона — папки там не создаются)
-const musicCandidates = f => [musicURL(f), new URL(encodeURIComponent(f), document.baseURI).href];
+// запасной источник: те же файлы из публичного GitHub-репозитория (если хостинг их не отдал)
+const MUSIC_GH = ['https://cdn.jsdelivr.net/gh/mad1shkaaa/musica@main/music/', 'https://raw.githubusercontent.com/mad1shkaaa/musica/main/music/'];
+const musicCandidates = f => [musicURL(f), new URL(encodeURIComponent(f), document.baseURI).href, ...MUSIC_GH.map(b => b + encodeURIComponent(f))];
 const Library = {
   loaded: null, ok: false,
   load() {
