@@ -43,6 +43,8 @@
 | 18 | `music_for_videos-inspiring-emotional-uplifting-piano-112623.mp3` | Inspiring Emotional Uplifting Piano | Music For Videos |
 | 19 | `pink_sound_copper_nights_jazz_background_music_for_video_stories.mp3` | Copper Nights Jazz | Pink Sound |
 | 20 | `alex_makemusic-feels-like-saturday-637034.mp3` | Feels Like Saturday | Alex_MakeMusic |
+| 21 | `purrplecat-serendipity-635081.mp3` | Serendipity | PurrpleCat |
+| 22 | `sonicmystery-reality-634743.mp3` | Reality | SonicMystery |
 
-Список задан в `index.html` (`TRACK_MANIFEST`, 20 треков). Чтобы добавить новый трек с другим именем,
+Список задан в `index.html` (`TRACK_MANIFEST`, 22 трека). Чтобы добавить новый трек с другим именем,
 допишите его туда в той же форме: `{"file": "x.mp3", "title": "…", "author": "…", "moods": ["calm"], "bpm": 96}`.
