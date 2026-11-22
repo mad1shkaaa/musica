@@ -45,6 +45,9 @@
 | 20 | `alex_makemusic-feels-like-saturday-637034.mp3` | Feels Like Saturday | Alex_MakeMusic |
 | 21 | `purrplecat-serendipity-635081.mp3` | Serendipity | PurrpleCat |
 | 22 | `sonicmystery-reality-634743.mp3` | Reality | SonicMystery |
+| 23 | `strawberry_candy-aggressive-metal-music-metalize-635620.mp3` | Metalize | Strawberry_Candy |
+| 24 | `studiokolomna-no-copyright-music-632665.mp3` | Energetic Music | StudioKolomna |
+| 25 | `the_mountain-christmas-637784.mp3` | Christmas | The_Mountain |
 
-Список задан в `index.html` (`TRACK_MANIFEST`, 22 трека). Чтобы добавить новый трек с другим именем,
+Список задан в `index.html` (`TRACK_MANIFEST`, 25 треков). Чтобы добавить новый трек с другим именем,
 допишите его туда в той же форме: `{"file": "x.mp3", "title": "…", "author": "…", "moods": ["calm"], "bpm": 96}`.
