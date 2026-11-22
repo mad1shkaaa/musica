@@ -3025,6 +3025,7 @@ const Narrator = {
       h.onLoading && h.onLoading(false); if (tok !== this.token) return;
       return this.playAudio(blob, day.text.length, h, tok);
     }
+    TTS.warnFallback(EL.ready(vsel.char));
     if (EL.ready(vsel.char)) {
       const key = vsel.char + ':' + vsel.mode + ':' + hashStr(day.text); let blob = day.voiceAudio && day.voiceAudio.key === key ? day.voiceAudio.blob : null;
       this.stop(); const tok = this.token; h.onStart && h.onStart(); h.onLoading && h.onLoading(!blob);
@@ -3155,18 +3156,36 @@ const EL = {
 // Если сервера нет (file://, GitHub Pages, OneCompiler) — работает как раньше: свой ключ в настройках или голос браузера.
 const SILENT_MP3 = 'data:audio/mpeg;base64,//NAxAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80LEWwAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80DEpAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsSjAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NCxKMAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
 const TTS = {
-  url: 'api/tts', info: null, at: 0, probing: null, ctl: null,
+  url: 'api/tts', info: null, at: 0, probing: null, ctl: null, reason: null, warned: false,
   probe(force) {
-    if (location.protocol === 'file:') { this.info = false; return Promise.resolve(false); }
+    if (location.protocol === 'file:') { this.info = false; this.reason = 'file'; return Promise.resolve(false); }
     if (!force && this.info !== null && Date.now() - this.at < (this.info ? 600000 : 60000)) return Promise.resolve(this.info);
     if (this.probing) return this.probing;
     return this.probing = (async () => {
-      let info = false; const c = new AbortController(), tm = setTimeout(() => c.abort(), 6000);
-      try { const r = await fetch(this.url, { cache: 'no-store', signal: c.signal }); if (r.ok && /json/.test(r.headers.get('content-type') || '')) { const j = await r.json(); if (j && j.ok && Array.isArray(j.voices)) info = j; } } catch (e) { }
-      clearTimeout(tm); this.info = info; this.at = Date.now(); this.probing = null; return info;
+      let info = false, reason = 'no_server'; const c = new AbortController(), tm = setTimeout(() => c.abort(), 6000);
+      try { const r = await fetch(this.url, { cache: 'no-store', signal: c.signal }); if (r.ok && /json/.test(r.headers.get('content-type') || '')) { const j = await r.json(); if (j && j.ok && Array.isArray(j.voices)) info = j; else if (j && j.ok === false) reason = 'no_key'; } }
+      catch (e) { if (navigator.onLine === false) reason = 'offline'; }
+      clearTimeout(tm); this.info = info; this.reason = info ? 'ok' : reason; this.at = Date.now(); this.probing = null; return info;
     })();
   },
   ready(id) { return !!(this.info && this.info.voices.includes(id)); },
+  // статус для настроек и уведомлений: ElevenLabs подключён / сервер недоступен / запасной голос
+  status() {
+    if (this.info) return { ok: true, text: '✦ ' + L3(V('ElevenLabs подключён через сервер', 'ElevenLabs is connected via the server', 'ElevenLabs сервер арқылы қосылды')) + ' · ' + this.info.voices.length + ' ' + L3(V('голосов', 'voices', 'дауыс')) + ' · ' + this.info.model };
+    if (this.info === null) return { ok: false, text: L3(V('Проверяю сервер озвучки…', 'Checking the narration server…', 'Дыбыстау серверін тексеріп жатырмын…')) };
+    const R = {
+      file: V('Сайт открыт как файл — сервера озвучки нет, поэтому голоса ElevenLabs недоступны', 'The site is opened as a file — there is no narration server, so ElevenLabs voices are unavailable', 'Сайт файл ретінде ашылды — дыбыстау сервері жоқ, ElevenLabs дауыстары қолжетімсіз'),
+      no_key: V('Сервер озвучки найден, но на нём не задан ключ ELEVENLABS_API_KEY', 'The narration server is found, but ELEVENLABS_API_KEY is not set on it', 'Дыбыстау сервері табылды, бірақ онда ELEVENLABS_API_KEY берілмеген'),
+      offline: V('Нет интернета — сервер озвучки недоступен', 'No internet — the narration server is unreachable', 'Интернет жоқ — дыбыстау сервері қолжетімсіз'),
+      no_server: V('Сервер озвучки недоступен', 'The narration server is unavailable', 'Дыбыстау сервері қолжетімсіз')
+    };
+    return { ok: false, text: L3(R[this.reason] || R.no_server) + '. ' + L3(V('Используется запасной голос браузера.', 'The fallback browser voice is used.', 'Браузердің қосалқы дауысы қолданылады.')) };
+  },
+  // один раз за сеанс сообщаем, что вместо клонированных голосов звучит запасной
+  warnFallback(legacy) {
+    if (this.warned || this.info) return; this.warned = true;
+    toast(legacy ? L3(V('Сервер ElevenLabs недоступен — звучат голоса из вашего личного ключа, а не 7 клонированных голосов', 'The ElevenLabs server is unavailable — voices from your personal key are used, not the 7 cloned voices', 'ElevenLabs сервері қолжетімсіз — 7 клондалған дауыс емес, жеке кілттегі дауыстар қолданылады')) : this.status().text, 7000);
+  },
   maxTotal() { return (this.info && this.info.maxTotal) || 6000; },
   cacheKey(vsel, text) { const i = this.info || {}; return 'srv:' + i.model + ':' + vsel.char + ':' + (i.tags ? vsel.mode : '') + ':' + hashStr(text); },
   // режем по предложениям; слишком длинное предложение — по словам
@@ -3203,7 +3222,7 @@ const TTS = {
       let r, timedOut = false; const tm = setTimeout(() => { timedOut = true; ctl.abort(); }, 90000);
       try { r = await fetch(this.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voice: charId, mode, lang: LANG, text: part }), signal: ctl.signal, cache: 'no-store' }); }
       catch (e) { clearTimeout(tm); throw this.err(timedOut ? 'timeout' : ctl.signal.aborted ? 'aborted' : 'offline'); }
-      if (!r.ok) { clearTimeout(tm); let code = r.status === 404 ? 'offline' : 'upstream_error'; try { const j = await r.json(); code = (j.error && j.error.code) || code; } catch (e) { } if (r.status === 404 || code === 'server_config') { this.info = false; this.at = Date.now(); } throw this.err(code); }
+      if (!r.ok) { clearTimeout(tm); let code = r.status === 404 ? 'offline' : 'upstream_error'; try { const j = await r.json(); code = (j.error && j.error.code) || code; } catch (e) { } if (r.status === 404 || code === 'server_config') { this.info = false; this.reason = code === 'server_config' ? 'no_key' : 'no_server'; this.at = Date.now(); } throw this.err(code); }
       try { blobs.push(await r.blob()); } catch (e) { throw this.err(timedOut ? 'timeout' : ctl.signal.aborted ? 'aborted' : 'offline'); } finally { clearTimeout(tm); }
     }
     if (this.ctl === ctl) this.ctl = null;
@@ -3226,6 +3245,7 @@ const VoicePreview = {
       }
       const a = this.audio = Narrator.playBlob(b); a.play().catch(e => { if (!(e && e.name === 'AbortError')) toast(t('soundBlocked')); }); return;
     }
+    TTS.warnFallback(EL.ready(charId));
     if (EL.ready(charId)) {
       let b = await DB.kvGet('vprev:' + charId + ':' + mode + ':' + LANG);
       if (!b) { try { toast(L3(V('Генерирую пример голоса…', 'Generating a voice sample…', 'Дауыс үлгісін жасап жатырмын…'))); b = await EL.tts(charId, mode, VSAMPLE[LANG] || VSAMPLE.ru); await DB.kvPut('vprev:' + charId + ':' + mode + ':' + LANG, b); } catch (e) { b = await DB.kvGet('vprev:' + charId); if (!b) { toast('ElevenLabs: ' + e.message, 6000); return; } } }
@@ -3544,7 +3564,7 @@ const Composer = {
   renderVoice() {
     $('#cVoiceL').textContent = L3(V('Голос озвучки — кто расскажет ваш день', 'Narrator — who tells your day', 'Дауыс — күніңізді кім айтады'));
     const sel = { ...this.voiceSel() }, box = $('#cVoice');
-    box.innerHTML = voicePickerHTML(sel) + (EL.key() || TTS.info ? '' : `<p class="note" style="margin-top:8px">${L3(V('Сейчас звучит запасной голос браузера. Живые голоса персонажей включаются ключом ElevenLabs в настройках ⚙.', 'A fallback browser voice is used now. Real character voices turn on with an ElevenLabs key in settings ⚙.', 'Қазір браузер дауысы. Нақты дауыстар үшін баптауларға ElevenLabs кілтін енгізіңіз ⚙.'))}</p>`);
+    box.innerHTML = voicePickerHTML(sel) + (TTS.info ? '' : `<p class="note" style="margin-top:8px">${esc(TTS.status().text)}</p>`);
     bindVoicePicker(box, sel, () => { this.voice = { ...sel }; this.renderVoice(); });
   },
   openEdit(day) {
@@ -3629,9 +3649,12 @@ const Settings = {
         <button class="btn ghost wide" id="sAvatar" style="margin-top:10px">✎ ${t('sAvatar')}</button></div>
       <div class="s-sec"><h4>${t('sName')}</h4><div class="row" style="flex-wrap:nowrap"><input type="text" id="sName" maxlength="24" value="${esc(u.name)}"><button class="btn ghost" id="sNameSave">${t('saveName')}</button></div></div>
       <div class="s-sec"><h4>ElevenLabs · ${L3(V('живые голоса персонажей', 'character voices', 'кейіпкер дауыстары'))}</h4>
-        <div class="pwrap"><input type="password" id="sElKey" placeholder="xi-api-key…" value="${esc(u.elKey || '')}" autocomplete="off" spellcheck="false"><button type="button" class="eye" id="sElEye" aria-label="show">👁</button></div>
+        <p class="note" id="sTtsStatus" style="${TTS.status().ok ? 'color:#bff3e4' : ''}">${esc(TTS.status().text)}</p>
+        <div class="row" style="margin-top:8px"><button class="btn ghost small" id="sTtsRetry">↻ ${L3(V('Проверить снова', 'Check again', 'Қайта тексеру'))}</button></div>
+        <details id="sElOwn" style="margin-top:10px"${TTS.info ? ' hidden' : ''}><summary class="note" style="cursor:pointer">${L3(V('Свой ключ ElevenLabs в браузере — старый режим без сервера, не рекомендуется', 'Personal ElevenLabs key in the browser — old mode without a server, not recommended', 'Браузердегі жеке ElevenLabs кілті — серверсіз ескі режим, ұсынылмайды'))}</summary>
+        <div class="pwrap" style="margin-top:8px"><input type="password" id="sElKey" placeholder="xi-api-key…" value="${esc(u.elKey || '')}" autocomplete="off" spellcheck="false"><button type="button" class="eye" id="sElEye" aria-label="show">👁</button></div>
         <div class="row" style="margin-top:8px"><button class="btn ghost small" id="sElSave">${t('saveName')}</button><button class="btn primary small" id="sElCreate">✦ ${L3(V('Создать 7 голосов', 'Create 7 voices', '7 дауыс жасау'))}</button></div>
-        <p class="note" id="sElStatus" style="margin-top:8px">${TTS.info ? '✦ ' + L3(V('Живые голоса подключены через сервер', 'Live voices are connected via the server', 'Тірі дауыстар сервер арқылы қосылды')) + ' · ' + esc(TTS.info.model) + '. ' : ''}${Object.keys(EL.voices()).length}/7 ${L3(V('голосов создано', 'voices created', 'дауыс жасалды'))}. ${L3(V('Ключ хранится только в этом браузере. Получить ключ: elevenlabs.io → Profile → API Keys. Создание голосов и озвучка расходуют кредиты ElevenLabs.', 'The key is stored only in this browser. Get one at elevenlabs.io → Profile → API Keys. Creating voices and narration use ElevenLabs credits.', 'Кілт тек осы браузерде сақталады. elevenlabs.io → Profile → API Keys.'))}</p></div>
+        <p class="note" id="sElStatus" style="margin-top:8px">${Object.keys(EL.voices()).length}/7 ${L3(V('голосов создано', 'voices created', 'дауыс жасалды'))}. ${L3(V('Ключ хранится только в этом браузере. Получить ключ: elevenlabs.io → Profile → API Keys. Создание голосов и озвучка расходуют кредиты ElevenLabs.', 'The key is stored only in this browser. Get one at elevenlabs.io → Profile → API Keys. Creating voices and narration use ElevenLabs credits.', 'Кілт тек осы браузерде сақталады. elevenlabs.io → Profile → API Keys.'))}</p></details></div>
       <div class="s-sec"><h4>${t('sVoice')} · ${L3(V('запасной', 'fallback', 'қосалқы'))}</h4><select id="sVoice"><option value="">${t('autoVoice')}</option>${vs.map(v => `<option value="${esc(v.voiceURI)}" ${u.voice === v.voiceURI ? 'selected' : ''}>${esc(v.name)} (${esc(v.lang)})</option>`).join('')}</select>
         <div class="row" style="margin-top:8px"><button class="btn ghost small" id="sVoiceTest">${t('testVoice')}</button></div><p class="note" style="margin-top:8px">${t('voiceHint')}</p></div>
       ${App.days.some(d => d.demo) ? `<div class="s-sec"><button class="btn ghost small" id="sDemo">${t('sDemo')}</button></div>` : ''}
@@ -3644,6 +3667,7 @@ const Settings = {
     $('#sNameSave').onclick = () => { const v = $('#sName').value.trim(); if (v.length < 2) { toast(t('errName')); return; } saveMe({ name: v }); $('#hName').textContent = v; toast(t('nameSaved')); this.render(); };
     $('#sVoice').onchange = e => saveMe({ voice: e.target.value || null });
     holdToReveal($('#sElEye'), $('#sElKey'));
+    $('#sTtsRetry').onclick = async () => { $('#sTtsStatus').textContent = '…'; await TTS.probe(true); if ($('#settings').classList.contains('open')) this.render(); };
     $('#sElSave').onclick = async () => { const k = $('#sElKey').value.trim(); saveMe({ elKey: k }); if (!k) { toast(t('nameSaved')); return; } $('#sElStatus').textContent = '…'; try { await EL.check(); $('#sElStatus').textContent = '✓ ' + L3(V('Ключ работает', 'Key works', 'Кілт жұмыс істейді')) + ' · ' + Object.keys(EL.voices()).length + '/7'; } catch (e) { $('#sElStatus').textContent = '✕ ' + e.message; } };
     $('#sElCreate').onclick = async () => { const k = $('#sElKey').value.trim(); if (!k) { toast(L3(V('Сначала вставьте ключ', 'Paste the key first', 'Алдымен кілтті қойыңыз'))); return; } saveMe({ elKey: k }); const st = $('#sElStatus'), btn = $('#sElCreate'); btn.disabled = true;
       try { await EL.createAll((i, c) => { st.textContent = c ? `${i + 1}/7 · ${L3(c.n)}…` : '✓ 7/7'; }); toast(L3(V('Голоса готовы — выберите их при записи дня', 'Voices are ready', 'Дауыстар дайын'))); } catch (e) { st.textContent = '✕ ' + e.message; } btn.disabled = false; };
@@ -3794,7 +3818,7 @@ const App = {
     if ('speechSynthesis' in window) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => { if ($('#settings').classList.contains('open')) Settings.render(); }; }
     const loop = () => { if (Gallery.active) Gallery.tick(); requestAnimationFrame(loop); }; requestAnimationFrame(loop);
     this.dbReady = DB.open();
-    Stage.init(); Cosmos.init(); Library.load(); TouchTrail.init(); TTS.probe();
+    Stage.init(); Cosmos.init(); Library.load(); TouchTrail.init(); TTS.probe().then(() => { if ($('#settings').classList.contains('open')) Settings.render(); });
     await this.dbReady; Backup.bind(); await Auth.load();
     const s = Auth.session();
     if (s) { const acc = Auth.get(s.uid); this.signIn(acc, false, true); } else Lang.open();
